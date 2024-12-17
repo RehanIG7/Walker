@@ -12,6 +12,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,94 +27,91 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.nativesteptracker.ui.theme.NativeStepTrackerTheme
 
-fun ComponentActivity.requestActivityRecognitionPermission(requestCode: Int) {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) { // API 29+ requires this permission
-        if (ContextCompat.checkSelfPermission(
-                this,
-                android.Manifest.permission.ACTIVITY_RECOGNITION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            // Request the permission
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(android.Manifest.permission.ACTIVITY_RECOGNITION),
-                requestCode
-            )
-        }
-    }
-}
-
-class MainActivity : ComponentActivity(),SensorEventListener {
+class MainActivity : ComponentActivity(), SensorEventListener {
     private val tag = "StepCounter"
 
     private lateinit var sensorManager: SensorManager
     private var stepSensor: Sensor? = null
-    private var steps = 100;
+    private var steps = 0
 
     private var totalSteps = 0f
     private var previousTotalSteps = 0f
-    private val ACTIVITY_RECOGNITION_REQUEST_CODE = 1001
+
+    // ActivityResultLauncher for requesting Activity Recognition Permission
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                Log.d(tag, "Permission granted")
+                startStepTracking()
+            } else {
+                Log.d(tag, "Permission denied")
+                showPermissionDeniedMessage()
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-
         super.onCreate(savedInstanceState)
-        requestActivityRecognitionPermission(ACTIVITY_RECOGNITION_REQUEST_CODE)
         enableEdgeToEdge()
 
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
+
+        // Check and request permission
+        requestActivityRecognitionPermission()
+
         setContent {
             NativeStepTrackerTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Column(modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.LightGray)
-                        .padding(20.dp, 40.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Scaffold(modifier = Modifier.fillMaxSize()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.LightGray)
+                            .padding(20.dp, 40.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         Text(
                             text = "Step Counter",
-                            modifier = Modifier.padding(0.dp,100.dp,0.dp,0.dp),
+                            modifier = Modifier.padding(0.dp, 100.dp, 0.dp, 0.dp),
                             fontSize = 25.sp,
                             color = Color.Black,
                             fontStyle = FontStyle.Italic
-
-                            )
+                        )
 
                         Text(
                             text = "Steps : $steps",
-                            modifier = Modifier.padding(0.dp,100.dp,0.dp,0.dp),
+                            modifier = Modifier.padding(0.dp, 100.dp, 0.dp, 0.dp),
                             fontSize = 16.sp,
                             color = Color.Black,
                             fontStyle = FontStyle.Normal
-
                         )
 
                         Row(
-                            modifier = Modifier.padding(0.dp,20.dp),
+                            modifier = Modifier.padding(0.dp, 20.dp),
                             horizontalArrangement = Arrangement.spacedBy(20.dp),
                         ) {
                             Button(onClick = {
-                                Log.d(tag,"start button clicked")
-                            },) {
-                                 Text("Start")
+                                Log.d(tag, "start button clicked")
+                                startStepTracking()
+                            }) {
+                                Text("Start")
                             }
                             Button(onClick = {
-                                Log.d(tag,"pause button clicked")
+                                Log.d(tag, "pause button clicked")
+                                sensorManager.unregisterListener(this@MainActivity)
                             }) {
                                 Text("Pause")
                             }
                         }
 
                         Button(onClick = {
-                            Log.d(tag,"sensorManager $sensorManager")
-                            Log.d(tag,"stepSensor $stepSensor")
-                        },) {
+                            Log.d(tag, "sensorManager: $sensorManager")
+                            Log.d(tag, "stepSensor: $stepSensor")
+                        }) {
                             Text("Display value")
                         }
                     }
@@ -122,21 +120,49 @@ class MainActivity : ComponentActivity(),SensorEventListener {
         }
     }
 
+    private fun requestActivityRecognitionPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) { // API 29+ requires this permission
+            when {
+                ContextCompat.checkSelfPermission(
+                    this,
+                    android.Manifest.permission.ACTIVITY_RECOGNITION
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    // Permission already granted
+                    startStepTracking()
+                }
+                else -> {
+                    // Request permission
+                    requestPermissionLauncher.launch(android.Manifest.permission.ACTIVITY_RECOGNITION)
+                }
+            }
+        } else {
+            // For devices below Android 10, permission is not needed
+            startStepTracking()
+        }
+    }
 
     private fun startStepTracking() {
-        // Your step tracking logic
-        println("Step tracking started...")
-    }
-
-    private fun showPermissionDeniedMessage() {
-        // Show message to user
-        println("Permission denied! Cannot track steps.")
-    }
-    override fun onResume() {
-        super.onResume()
         // Register the step sensor listener
         stepSensor?.also {
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
+            Log.d(tag, "Step tracking started...")
+        } ?: Log.d(tag, "Step Sensor not available")
+    }
+
+    private fun showPermissionDeniedMessage() {
+        Log.d(tag, "Permission denied! Cannot track steps.")
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (ContextCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.ACTIVITY_RECOGNITION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            stepSensor?.also {
+                sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
+            }
         }
     }
 
@@ -148,8 +174,9 @@ class MainActivity : ComponentActivity(),SensorEventListener {
 
     override fun onSensorChanged(event: SensorEvent?) {
         if (event?.sensor?.type == Sensor.TYPE_STEP_COUNTER) {
-            totalSteps = event.values[0]
-            Log.d(tag, "Total Steps: $totalSteps")
+            val currentSteps = event.values[0] - previousTotalSteps
+            steps = currentSteps.toInt()
+            Log.d(tag, "Total Steps: $steps")
         }
     }
 
@@ -157,4 +184,3 @@ class MainActivity : ComponentActivity(),SensorEventListener {
         // Not needed for TYPE_STEP_COUNTER
     }
 }
-
