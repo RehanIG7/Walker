@@ -12,6 +12,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.NativeStepTracker"
         tools:targetApi="31">
+        <meta-data
+            android:name="com.google.android.apps.analytics.attributionTag"
+            android:value="your-attribution-tag" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
