@@ -42,8 +42,11 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private var sensorManager: SensorManager? = null
     private var running = false
     private var totalSteps by mutableStateOf(0f)
-    private val MIN_STEP_INTERVAL = 500 // Minimum time between steps in milliseconds
+    private var totalDistance by mutableStateOf(0f)
+
+    private val MIN_STEP_INTERVAL = 500 // 300ms = 0.3 seconds
     private var lastStepTime: Long = 0
+    private val STEP_LENGTH_METERS = 0.75f // Example: 0.75 meters per step
 
     // Permission launcher for Activity Recognition
     private val requestPermissionLauncher =
@@ -64,7 +67,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         checkAndRequestPermissions()
 
         setContent {
-            HomeScreen(steps = totalSteps)
+            HomeScreen(steps = totalSteps,totalDistance =totalDistance)
         }
     }
 
@@ -152,18 +155,22 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             when (event.sensor.type) {
                 Sensor.TYPE_STEP_COUNTER -> {
                     if (running) {
-                        // Handle cumulative step count here if needed
+                        // Handle cumulative step count if needed
                         Log.d(tag, "Step Counter: Total Steps: ${event.values[0]}")
                     }
                 }
                 Sensor.TYPE_STEP_DETECTOR -> {
                     if (running) {
-                        // Filter false positives using time interval
                         val currentTime = System.currentTimeMillis()
                         if (lastStepTime == 0L || currentTime - lastStepTime > MIN_STEP_INTERVAL) {
-                            totalSteps += 1 // Increment step count for each step detected
+                            totalSteps += 1 // Increment step count
                             lastStepTime = currentTime
-                            Log.d(tag, "Step Detector: Valid step detected. Total steps: $totalSteps")
+
+                            // Calculate distance
+                            totalDistance = totalSteps * STEP_LENGTH_METERS
+
+                            // Log the updated steps and distance
+                            Log.d(tag, "Step Detector: Valid step detected. Total steps: $totalSteps, Distance: $totalDistance meters")
                         } else {
                             Log.d(tag, "Step Detector: Ignored false positive due to rapid events")
                         }
@@ -174,6 +181,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             Log.e(tag, "Sensor Event is null")
         }
     }
+
 
 
 

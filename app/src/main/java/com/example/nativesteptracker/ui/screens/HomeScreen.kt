@@ -17,11 +17,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.ContentInfoCompat.Flags
 import com.example.nativesteptracker.ui.theme.NativeStepTrackerTheme
 
 @Composable
 fun HomeScreen(
     steps: Float,
+    totalDistance: Float
 //    onStartClick: () -> Unit,
 //    onPauseClick: () -> Unit,
 //    onDisplayValueClick: () -> Unit
@@ -47,6 +49,14 @@ fun HomeScreen(
                 Text(
                     text = "Steps : $steps",
                     modifier = Modifier.padding(0.dp, 100.dp, 0.dp, 0.dp),
+                    fontSize = 16.sp,
+                    color = Color.Black,
+                    fontStyle = FontStyle.Normal
+                )
+
+                Text(
+                    text = "Distance : $totalDistance",
+                    modifier = Modifier.padding(0.dp, 20.dp, 0.dp, 0.dp),
                     fontSize = 16.sp,
                     color = Color.Black,
                     fontStyle = FontStyle.Normal
