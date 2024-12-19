@@ -23,7 +23,8 @@ import com.example.nativesteptracker.ui.theme.NativeStepTrackerTheme
 @Composable
 fun HomeScreen(
     steps: Float,
-    totalDistance: Float
+    totalDistance: Float,
+    totalStepByStepCounter:Float
 //    onStartClick: () -> Unit,
 //    onPauseClick: () -> Unit,
 //    onDisplayValueClick: () -> Unit
@@ -47,7 +48,7 @@ fun HomeScreen(
                 )
 
                 Text(
-                    text = "Steps : $steps",
+                    text = "Steps By TYPE_STEP_DETECTOR: $steps",
                     modifier = Modifier.padding(0.dp, 100.dp, 0.dp, 0.dp),
                     fontSize = 16.sp,
                     color = Color.Black,
@@ -55,12 +56,20 @@ fun HomeScreen(
                 )
 
                 Text(
-                    text = "Distance : $totalDistance",
-                    modifier = Modifier.padding(0.dp, 20.dp, 0.dp, 0.dp),
+                    text = "Steps By TYPE_STEP_COUNTER : $totalStepByStepCounter",
+                    modifier = Modifier.padding(0.dp, 10.dp, 0.dp, 0.dp),
                     fontSize = 16.sp,
                     color = Color.Black,
                     fontStyle = FontStyle.Normal
                 )
+
+//                Text(
+//                    text = "Distance : $totalDistance",
+//                    modifier = Modifier.padding(0.dp, 20.dp, 0.dp, 0.dp),
+//                    fontSize = 16.sp,
+//                    color = Color.Black,
+//                    fontStyle = FontStyle.Normal
+//                )
 
                 Row(
                     modifier = Modifier.padding(0.dp, 20.dp),
