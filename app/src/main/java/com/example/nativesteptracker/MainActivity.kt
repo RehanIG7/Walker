@@ -2,37 +2,31 @@ package com.example.nativesteptracker
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
-import androidx.compose.runtime.*
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
+import com.example.nativesteptracker.services.StepCounterService
 import com.example.nativesteptracker.ui.screens.HomeScreen
 
-class MainActivity : ComponentActivity(), SensorEventListener {
+class MainActivity : ComponentActivity() {
 
     private val tag = "StepCounter"
-    private var sensorManager: SensorManager? = null
-    private var running = false
-    private var totalSteps by mutableStateOf(0f)
-    private var totalStepByStepCounter by mutableStateOf(0f)
-    private var totalDistance by mutableStateOf(0f)
+    public var totalSteps: MutableState<Float> = mutableStateOf(0f)
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
-                initializeStepCounter()
+                startStepCounterService() // Start service if permission is granted
             } else {
                 Toast.makeText(this, "Permission denied. Some features may not work.", Toast.LENGTH_SHORT).show()
             }
@@ -40,21 +34,22 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-
-        // Check if permission is required for this Android version
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            checkAndRequestPermission()
-        } else {
-            initializeStepCounter() // No permission required below Android Q
-        }
+        totalSteps.value = getSavedSteps()
+        val stepCounterService = StepCounterService()
 
         setContent {
             HomeScreen(
-                steps = totalSteps,
-                totalDistance = totalDistance,
-                totalStepByStepCounter = totalStepByStepCounter
+                steps = totalSteps.value,
+                totalDistance = 0f, // Update this as needed
+                totalStepByStepCounter = 0f // Update this as needed
             )
+        }
+
+        // Check permission and start service if necessary
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            checkAndRequestPermission()
+        } else {
+            startStepCounterService() // No permission required below Android Q
         }
     }
 
@@ -67,54 +62,21 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         ) {
             requestPermissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
         } else {
-            initializeStepCounter()
+            startStepCounterService()
         }
     }
 
-    private fun initializeStepCounter() {
-        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
-
-        val stepCounter = sensorManager?.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
-        val stepDetector = sensorManager?.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
-
-        if (stepCounter != null) {
-            sensorManager?.registerListener(this, stepCounter, SensorManager.SENSOR_DELAY_UI)
-            Log.d(tag, "Step Counter sensor registered")
+    private fun startStepCounterService() {
+        val serviceIntent = Intent(this, StepCounterService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent)
         } else {
-            Toast.makeText(this, "Step Counter sensor not available", Toast.LENGTH_SHORT).show()
-        }
-
-        if (stepDetector != null) {
-            sensorManager?.registerListener(this, stepDetector, SensorManager.SENSOR_DELAY_UI)
-            Log.d(tag, "Step Detector sensor registered")
-        } else {
-            Toast.makeText(this, "Step Detector sensor not available", Toast.LENGTH_SHORT).show()
+            startService(serviceIntent)
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        running = true
-        val stepSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
-        if (stepSensor == null) {
-            Toast.makeText(this, "No sensor detected on this device", Toast.LENGTH_SHORT).show()
-        } else {
-            sensorManager?.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_UI)
-        }
+    private fun getSavedSteps(): Float {
+        val sharedPreferences = getSharedPreferences("step_data", Context.MODE_PRIVATE)
+        return sharedPreferences.getFloat("total_steps", 0f)
     }
-
-    override fun onPause() {
-        super.onPause()
-        sensorManager?.unregisterListener(this)
-    }
-
-    override fun onSensorChanged(event: SensorEvent) {
-        when (event.sensor.type) {
-            Sensor.TYPE_STEP_DETECTOR -> {
-                totalSteps += 1
-            }
-        }
-    }
-
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 }

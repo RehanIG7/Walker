@@ -6,6 +6,13 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
+    <uses-permission android:name="android.permission.BODY_SENSORS" />
+    <uses-permission android:name="android.permission.BODY_SENSORS_BACKGROUND" />
+
+
     <!-- For devices running Android 10 and above, this permission allows background location access -->
     <application
         android:allowBackup="true"
@@ -16,13 +23,12 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.NativeStepTracker"
-        tools:remove="attributionTag"
-        tools:targetApi="31">
+        tools:targetApi="31"
+        >
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name"
             android:theme="@style/Theme.NativeStepTracker">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -30,6 +36,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <service
+            android:exported="false"
+            android:name=".services.StepCounterService"
+            android:foregroundServiceType=""
+           >
+            <intent-filter>
+                <action android:name="com.example.nativesteptracker.StepCounterService" />
+            </intent-filter>
+        </service>
+
     </application>
 
 </manifest>
